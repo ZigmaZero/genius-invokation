@@ -82,6 +82,44 @@ local function ts_objectRest(target, usedProperties)
     return result
 end
 
+local ts_symbol
+local Symbol
+do
+    local symbolMetatable = {__tostring = function(self)
+        return ("Symbol(" .. (self.description or "")) .. ")"
+    end}
+    function ts_symbol(description)
+        return setmetatable({description = description}, symbolMetatable)
+    end
+    Symbol = {
+        asyncDispose = ts_symbol("Symbol.asyncDispose"),
+        dispose = ts_symbol("Symbol.dispose"),
+        iterator = ts_symbol("Symbol.iterator"),
+        hasInstance = ts_symbol("Symbol.hasInstance"),
+        species = ts_symbol("Symbol.species"),
+        toStringTag = ts_symbol("Symbol.toStringTag")
+    }
+end
+
+local function ts_instanceOf(obj, classTbl)
+    if type(classTbl) ~= "table" then
+        error("Right-hand side of 'instanceof' is not an object", 0)
+    end
+    if classTbl[Symbol.hasInstance] ~= nil then
+        return not not classTbl[Symbol.hasInstance](classTbl, obj)
+    end
+    if type(obj) == "table" then
+        local luaClass = obj.constructor
+        while luaClass ~= nil do
+            if luaClass == classTbl then
+                return true
+            end
+            luaClass = luaClass.____super
+        end
+    end
+    return false
+end
+
 ts.class = ts_class
 ts.new = ts_new
 ts.arrayMap = ts_arrayMap
@@ -90,5 +128,7 @@ ts.countVarArgs = ts_countVarArgs
 ts.objectEntries = ts_objectEntries
 ts.objectAssign = ts_objectAssign
 ts.objectRest = ts_objectRest
-
+ts.instanceOf = ts_instanceOf
+ts.Symbol = ts_symbol
+ts._Symbol = Symbol
 return ts
